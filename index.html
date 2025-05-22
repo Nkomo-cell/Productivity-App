@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Productivity Dashboard</title>
+  <script src="https://unpkg.com/vue@3"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-gray-900 dark:bg-gray-900 dark:text-white min-h-screen flex items-center justify-center overflow-x-hidden">
+  <div id="app" class="w-full max-w-md p-4 sm:p-6 rounded shadow-lg bg-white dark:bg-gray-800 mx-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-xl sm:text-2xl font-bold">Productivity Dashboard</h1>
+      <button @click="toggleDarkMode" class="border px-2 py-1 rounded text-sm">Toggle Dark Mode</button>
+    </div>
+
+    <p class="italic text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
+      "Discipline is doing what needs to be done, even when you don't feel like doing it."
+    </p>
+
+    <input type="date" v-model="selectedDate" class="w-full mb-2 p-2 border rounded dark:bg-gray-700" />
+
+    <input type="text" v-model="newTask" placeholder="Enter a task..." class="w-full mb-2 p-2 border rounded dark:bg-gray-700" />
+
+    <select v-model="category" class="w-full mb-2 p-2 border rounded dark:bg-gray-700">
+      <option disabled value="">Select a category</option>
+      <option>Work</option>
+      <option>Health</option>
+      <option>Personal</option>
+    </select>
+
+    <label class="text-sm mb-1 block">Reminder Time</label>
+    <input type="time" v-model="reminderTime" class="w-full mb-3 p-2 border rounded dark:bg-gray-700" />
+
+    <button @click="addTask" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+      Add Task with Reminder
+    </button>
+
+    <div v-if="tasks[selectedDate] && tasks[selectedDate].length" class="mt-4">
+      <h2 class="text-lg font-semibold mb-2">Tasks for {{ selectedDate }}:</h2>
+      <ul class="space-y-2">
+        <li v-for="(task, index) in tasks[selectedDate]" :key="index"
+            class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded">
+          <div>
+            <strong>[{{ task.category }}]</strong> {{ task.text }}
+            <span v-if="task.time" class="text-xs text-gray-500 ml-2">({{ task.time }})</span>
+          </div>
+          <button @click="removeTask(index)" class="text-red-500 hover:underline text-sm">Remove</button>
+        </li>
+      </ul>
+    </div>
+
+    <footer class="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
+      Created by M. Nkomo © 2025
+    </footer>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          newTask: '',
+          selectedDate: new Date().toISOString().split('T')[0],
+          reminderTime: '',
+          category: '',
+          tasks: JSON.parse(localStorage.getItem('tasks')) || {},
+          darkMode: JSON.parse(localStorage.getItem('darkMode')) || false
+        };
+      },
+      methods: {
+        addTask() {
+          if (!this.newTask || !this.category) return;
+
+          if (!this.tasks[this.selectedDate]) {
+            this.tasks[this.selectedDate] = [];
+          }
+
+          const task = {
+            text: this.newTask,
+            time: this.reminderTime,
+            category: this.category
+          };
+
+          this.tasks[this.selectedDate].push(task);
+          this.saveTasks();
+          this.scheduleNotification(task);
+
+          this.newTask = '';
+          this.reminderTime = '';
+          this.category = '';
+        },
+        removeTask(index) {
+          this.tasks[this.selectedDate].splice(index, 1);
+          this.saveTasks();
+        },
+        saveTasks() {
+          localStorage.setItem('tasks', JSON.stringify(this.tasks));
+        },
+        toggleDarkMode() {
+          this.darkMode = !this.darkMode;
+          document.documentElement.classList.toggle('dark', this.darkMode);
+          localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
+        },
+        scheduleNotification(task) {
+          if (!task.time || Notification.permission !== 'granted') return;
+
+          const now = new Date();
+          const taskTime = new Date(`${this.selectedDate}T${task.time}`);
+          const delay = taskTime - now;
+
+          if (delay > 0) {
+            setTimeout(() => {
+              new Notification(`Reminder: ${task.text}`);
+            }, delay);
+          }
+        }
+      },
+      mounted() {
+        document.documentElement.classList.toggle('dark', this.darkMode);
+
+        if (Notification.permission !== 'granted') {
+          Notification.requestPermission();
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
